@@ -1,0 +1,14 @@
+.DS_Store
+node_modules/*
+src
+bin
+.vscode
+examples
+.eslintrc
+.prettierrc
+.gitignore
+LICENSE
+nodemon.json
+README.md
+tsconfig.json
+yarn.lock

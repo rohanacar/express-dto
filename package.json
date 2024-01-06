@@ -1,6 +1,6 @@
 {
   "name": "express-dto",
-  "version": "0.1.0",
+  "version": "0.2.71",
   "description": "Mongoose-based, swagger-compliant request, response and permission validation middleware for Express.js",
   "homepage": "https://github.com/rohanacar/express-dto",
   "keywords": [

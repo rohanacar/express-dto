@@ -2,7 +2,6 @@ import mongoose, { Schema } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 
 import type {
-  Express,
   Schemas,
   Options,
   StrictOptions,
@@ -13,7 +12,22 @@ import type {
   Response,
   NextFunction,
   DTOParams,
+  Express,
 } from "./types";
+
+export {
+  Schemas,
+  Options,
+  StrictOptions,
+  ResponseSchema,
+  Model,
+  Document,
+  Request,
+  Response,
+  NextFunction,
+  DTOParams,
+  Express,
+};
 
 // Create a new mongoose instance
 const instance = new mongoose.Mongoose();
@@ -48,7 +62,7 @@ export default class DTO {
   #responseModels: { [statusCode: string]: Model<any> | Array<Model<any>> } =
     {};
 
-  constructor(schemas: Schemas, options: Options) {
+  constructor(schemas: Schemas, options?: Options) {
     if (!options) {
       options = {};
     }
@@ -162,7 +176,13 @@ export default class DTO {
         fields,
         error,
       });
-      return res;
+    } else if (this.#options.$error) {
+      res.$error({
+        code: "RESx001",
+        message: "Response validation failed.",
+        fields,
+        error,
+      });
     } else {
       next({
         code: "RESx001",
@@ -170,8 +190,8 @@ export default class DTO {
         fields,
         error,
       });
-      return res;
     }
+    return res;
   }
   #reqValidationFailed(
     req: Request,
@@ -190,6 +210,13 @@ export default class DTO {
         fields,
         error,
       });
+    } else if (this.#options.$error) {
+      res.$error({
+        code: "REQx001",
+        message: "Request validation failed.",
+        fields,
+        error,
+      });
     } else {
       next({
         code: "REQx001",
@@ -200,10 +227,18 @@ export default class DTO {
     }
   }
   async middleware(req: Request, res: Response, next: NextFunction) {
+    if (this.#options.$error) {
+      res.$error = this.#options.$error;
+    }
     if (this.#options.auth) {
       if (typeof this.#options.auth !== "function") {
         if (this.#options.onACLError) {
           return this.#options.onACLError(req, res, next, {
+            code: "ACLx002",
+            message: "Auth parameter must be a function.",
+          });
+        } else if (this.#options.$error) {
+          return res.$error({
             code: "ACLx002",
             message: "Auth parameter must be a function.",
           });
@@ -231,6 +266,11 @@ export default class DTO {
                 code: "ACLx001",
                 message: "Access denied.",
               });
+            } else if (this.#options.$error) {
+              return res.$error({
+                code: "ACLx001",
+                message: "Access denied.",
+              });
             } else {
               return next({
                 code: "ACLx001",
@@ -245,6 +285,11 @@ export default class DTO {
             code: "ACLx001",
             message: "Access denied.",
           });
+        } else if (this.#options.$error) {
+          res.$error({
+            code: "ACLx001",
+            message: "Access denied.",
+          });
         } else {
           next({
             code: "ACLx001",
@@ -254,6 +299,11 @@ export default class DTO {
       } else if (_permissions !== true) {
         if (this.#options.onACLError) {
           return this.#options.onACLError(req, res, next, {
+            code: "ACLx002",
+            message: "Return type must be a boolean or object.",
+          });
+        } else if (this.#options.$error) {
+          return res.$error({
             code: "ACLx002",
             message: "Return type must be a boolean or object.",
           });
@@ -273,6 +323,12 @@ export default class DTO {
         if (!model || (isArray && !model[0])) {
           if (this.#options.onReqError) {
             this.#options.onReqError(req, res, next, {
+              code: "SCHEMAx001",
+              message: "Response schema not found.",
+              statusCode: res.statusCode,
+            });
+          } else if (this.#options.$error) {
+            res.$error({
               code: "SCHEMAx001",
               message: "Response schema not found.",
               statusCode: res.statusCode,
@@ -389,6 +445,11 @@ export default class DTO {
           next();
         } else if (this.#options.onReqError) {
           this.#options.onReqError(req, res, next, {
+            code: "REQx002",
+            message: "Invalid request method.",
+          });
+        } else if (this.#options.$error) {
+          res.$error({
             code: "REQx002",
             message: "Invalid request method.",
           });

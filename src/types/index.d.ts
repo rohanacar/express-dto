@@ -1,162 +1,8 @@
 import { Model, Document, MongooseError } from "mongoose";
-import {
-  e,
-  RequestHandler,
-  RequestHandlerParams,
-  Request,
-  Response,
-  NextFunction,
-  IRoute,
-} from "express-serve-static-core";
+import { e, Request, Response, NextFunction } from "express-serve-static-core";
+import path from "path";
+
 type Express = e;
-type Methods = "get" | "post" | "patch" | "put" | "delete";
-type DTOMethod = (
-  DTOParams,
-  DTOParams,
-  DTOParams,
-  ...handlers: any[]
-) => IRoute;
-
-interface DTORouterHandler<T, Route extends string = string> {
-  (DTOParams, ...handlers: Array<RequestHandler<RouteParameters<Route>>>): T;
-  (
-    DTOParams,
-    ...handlers: Array<RequestHandlerParams<RouteParameters<Route>>>
-  ): T;
-  <
-    P = RouteParameters<Route>,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    DTOParams,
-    ...handlers: Array<RequestHandler<P, ResBody, ReqBody, ReqQuery, LocalsObj>>
-  ): T;
-  <
-    P = RouteParameters<Route>,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    DTOParams,
-    ...handlers: Array<
-      RequestHandlerParams<P, ResBody, ReqBody, ReqQuery, LocalsObj>
-    >
-  ): T;
-  <
-    P = ParamsDictionary,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    DTOParams,
-    ...handlers: Array<RequestHandler<P, ResBody, ReqBody, ReqQuery, LocalsObj>>
-  ): T;
-  <
-    P = ParamsDictionary,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    DTOParams,
-    ...handlers: Array<
-      RequestHandlerParams<P, ResBody, ReqBody, ReqQuery, LocalsObj>
-    >
-  ): T;
-}
-
-interface DTORouterMatcher<
-  T,
-  Method extends "get" | "post" | "put" | "delete" | "patch" = any
-> {
-  <
-    Route extends string,
-    P = RouteParameters<Route>,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    path: Route,
-    DTOParams,
-    ...handlers: Array<RequestHandler<P, ResBody, ReqBody, ReqQuery, LocalsObj>>
-  ): T;
-  <
-    Path extends string,
-    P = RouteParameters<Path>,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    path: Path,
-    DTOParams,
-    ...handlers: Array<
-      RequestHandlerParams<P, ResBody, ReqBody, ReqQuery, LocalsObj>
-    >
-  ): T;
-  <
-    P = ParamsDictionary,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    path: PathParams,
-    DTOParams,
-    ...handlers: Array<RequestHandler<P, ResBody, ReqBody, ReqQuery, LocalsObj>>
-  ): T;
-  <
-    P = ParamsDictionary,
-    ResBody = any,
-    ReqBody = any,
-    ReqQuery = ParsedQs,
-    LocalsObj extends Record<string, any> = Record<string, any>
-  >(
-    path: PathParams,
-    DTOParams,
-    ...handlers: Array<
-      RequestHandlerParams<P, ResBody, ReqBody, ReqQuery, LocalsObj>
-    >
-  ): T;
-  (path: PathParams, subApplication: Application): T;
-}
-
-export type ISend<ResBody = any, T = Response<ResBody>> = (
-  body?: ResBody
-) => Promise<T> | T;
-declare module "express-serve-static-core" {
-  export interface IRouter {
-    $post: DTORouterMatcher<this, "post">;
-    $patch: DTORouterMatcher<this, "patch">;
-    $put: DTORouterMatcher<this, "put">;
-    $get: DTORouterMatcher<this, "get">;
-    $delete: DTORouterMatcher<this, "delete">;
-  }
-  export interface IRoute {
-    $post: DTORouterHandler<this, Route>;
-    $patch: DTORouterHandler<this, Route>;
-    $put: DTORouterHandler<this, Route>;
-    $get: DTORouterHandler<this, Route>;
-    $delete: DTORouterHandler<this, Route>;
-  }
-  export interface Application {
-    $post: DTORouterMatcher<this, "post">;
-    $patch: DTORouterMatcher<this, "patch">;
-    $put: DTORouterMatcher<this, "put">;
-    $get: DTORouterMatcher<this, "get">;
-    $delete: DTORouterMatcher<this, "delete">;
-  }
-
-  export interface Response {
-    $send: ISend<ResBody, this>;
-    $json: ISend<ResBody, this>;
-  }
-}
 
 interface Permissions {
   [key: string]: {
@@ -171,7 +17,12 @@ export interface ErrorMessage {
   error?: any;
   statusCode?: number;
 }
-
+export type ErrorHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  message: ErrorMessage
+) => void;
 export interface Options {
   auth?: (
     req: Request
@@ -186,24 +37,10 @@ export interface Options {
     request?: boolean;
     response?: boolean;
   };
-  onReqError?: (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-    message: ErrorMessage
-  ) => void;
-  onResError?: (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-    message: ErrorMessage
-  ) => void;
-  onACLError?: (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-    message: ErrorMessage
-  ) => void;
+  onReqError?: ErrorHandler;
+  onResError?: ErrorHandler;
+  onACLError?: ErrorHandler;
+  $error?: (any) => void;
 }
 
 export interface StrictOptions extends Options {
@@ -242,7 +79,7 @@ export interface Schemas {
 
 export interface DTOParams {
   schemas: Schemas;
-  options: Options;
+  options?: Options;
 }
 
 export {
@@ -254,3 +91,50 @@ export {
   Document,
   MongooseError,
 };
+
+type RouteFN<T> = (
+  dto: DTOParams,
+  ...args: RequestHandler | RequestHandler[]
+) => T;
+
+type RouterFN<T> = (
+  path: string,
+  dto: DTOParams,
+  ...args: RequestHandler | RequestHandler[]
+) => T;
+
+export type ISend<ResBody = any, T = Response<ResBody>> = (
+  body?: ResBody
+) => Promise<T> | T;
+
+declare module "express-serve-static-core" {
+  export interface Application {
+    $post: RouterFN<Application>;
+    $put: RouterFN<Application>;
+    $patch: RouterFN<Application>;
+    $get: RouterFN<Application>;
+    $delete: RouterFN<Application>;
+  }
+
+  export interface IRouter {
+    $post: RouterFN<IRouter>;
+    $put: RouterFN<IRouter>;
+    $patch: RouterFN<IRouter>;
+    $get: RouterFN<IRouter>;
+    $delete: RouterFN<IRouter>;
+  }
+
+  export interface IRoute {
+    $post: RouteFN<IRoute>;
+    $put: RouteFN<IRoute>;
+    $patch: RouteFN<IRoute>;
+    $get: RouteFN<IRoute>;
+    $delete: RouteFN<IRoute>;
+  }
+
+  export interface Response {
+    $send: ISend<any, this>;
+    $json: ISend<any, this>;
+    $error: (any) => void;
+  }
+}
